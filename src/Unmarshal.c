@@ -769,7 +769,6 @@ TPM_RC
 TPMI_DH_SAVED_Unmarshal(TPMI_DH_SAVED *target, BYTE **buffer, INT32 *size, BOOL allowNull)
 {
     TPM_RC rc = TPM_RC_SUCCESS;
-    allowNull = allowNull;
 
     if (rc == TPM_RC_SUCCESS) {
 	rc = TPM_HANDLE_Unmarshal(target, buffer, size);  
@@ -1467,11 +1466,8 @@ TPMI_ALG_CIPHER_MODE_Unmarshal(TPMI_ALG_CIPHER_MODE*target, BYTE **buffer, INT32
 TPM_RC
 TPMS_EMPTY_Unmarshal(TPMS_EMPTY *target, BYTE **buffer, INT32 *size)
 {
-    TPM_RC rc = TPM_RC_SUCCESS;
-    target = target;
-    buffer = buffer;
-    size = size;
-    return rc;
+    /* Nothing to unmarshal */
+    return TPM_RC_SUCCESS;
 }
 
 /* Table 70 - Definition of TPMU_HA Union <IN/OUT, S> */

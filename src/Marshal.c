@@ -1389,9 +1389,7 @@ TPMS_ENC_SCHEME_OAEP_Marshal(TPMS_ENC_SCHEME_OAEP *source, BYTE **buffer, INT32 
 UINT16
 TPMS_ENC_SCHEME_RSAES_Marshal(TPMS_ENC_SCHEME_RSAES *source, BYTE **buffer, INT32 *size)
 {
-    source = source;
-    buffer = buffer;
-    size = size;
+    /* Nothing to marshal */
     return 0;
 }
 

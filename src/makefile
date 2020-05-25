@@ -38,7 +38,7 @@
 #################################################################################
 
 
-CC = /usr/bin/gcc
+CC = /usr/bin/cc
 
 CCFLAGS = -Wall  			\
 	-Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
@@ -67,7 +67,7 @@ all:	tpm_server
 # contributed code, not tested
 install:	tpm_server
 		install -d $(DESTDIR)/usr/bin
-		install -t $(DESTDIR)/usr/bin $<
+		install $< $(DESTDIR)/usr/bin
 
 include makefile-common
 

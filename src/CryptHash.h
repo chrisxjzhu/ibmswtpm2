@@ -88,7 +88,9 @@ typedef struct sequenceMethods {
     SMAC_DATA_METHOD          data;
     SMAC_END_METHOD           end;
 } SMAC_METHODS;
-#define SMAC_IMPLEMENTED (defined CC_MAC || defined CC_MAC_Start)
+#if CC_MAC || CC_MAC_Start
+#define SMAC_IMPLEMENTED 1
+#endif
 
 /* These definitions are here because the SMAC state is in the union of hash states. */
 

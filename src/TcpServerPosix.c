@@ -1,63 +1,10 @@
-/********************************************************************************/
-/*										*/
-/*		Socket Interface to a TPM Simulator    				*/
-/*			     Written by Ken Goldman				*/
-/*		       IBM Thomas J. Watson Research Center			*/
-/*            $Id: TcpServerPosix.c 1528 2019-11-20 20:31:43Z kgoldman $	*/
-/*										*/
-/*  Licenses and Notices							*/
-/*										*/
-/*  1. Copyright Licenses:							*/
-/*										*/
-/*  - Trusted Computing Group (TCG) grants to the user of the source code in	*/
-/*    this specification (the "Source Code") a worldwide, irrevocable, 		*/
-/*    nonexclusive, royalty free, copyright license to reproduce, create 	*/
-/*    derivative works, distribute, display and perform the Source Code and	*/
-/*    derivative works thereof, and to grant others the rights granted herein.	*/
-/*										*/
-/*  - The TCG grants to the user of the other parts of the specification 	*/
-/*    (other than the Source Code) the rights to reproduce, distribute, 	*/
-/*    display, and perform the specification solely for the purpose of 		*/
-/*    developing products based on such documents.				*/
-/*										*/
-/*  2. Source Code Distribution Conditions:					*/
-/*										*/
-/*  - Redistributions of Source Code must retain the above copyright licenses, 	*/
-/*    this list of conditions and the following disclaimers.			*/
-/*										*/
-/*  - Redistributions in binary form must reproduce the above copyright 	*/
-/*    licenses, this list of conditions	and the following disclaimers in the 	*/
-/*    documentation and/or other materials provided with the distribution.	*/
-/*										*/
-/*  3. Disclaimers:								*/
-/*										*/
-/*  - THE COPYRIGHT LICENSES SET FORTH ABOVE DO NOT REPRESENT ANY FORM OF	*/
-/*  LICENSE OR WAIVER, EXPRESS OR IMPLIED, BY ESTOPPEL OR OTHERWISE, WITH	*/
-/*  RESPECT TO PATENT RIGHTS HELD BY TCG MEMBERS (OR OTHER THIRD PARTIES)	*/
-/*  THAT MAY BE NECESSARY TO IMPLEMENT THIS SPECIFICATION OR OTHERWISE.		*/
-/*  Contact TCG Administration (admin@trustedcomputinggroup.org) for 		*/
-/*  information on specification licensing rights available through TCG 	*/
-/*  membership agreements.							*/
-/*										*/
-/*  - THIS SPECIFICATION IS PROVIDED "AS IS" WITH NO EXPRESS OR IMPLIED 	*/
-/*    WARRANTIES WHATSOEVER, INCLUDING ANY WARRANTY OF MERCHANTABILITY OR 	*/
-/*    FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, COMPLETENESS, OR 		*/
-/*    NONINFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS, OR ANY WARRANTY 		*/
-/*    OTHERWISE ARISING OUT OF ANY PROPOSAL, SPECIFICATION OR SAMPLE.		*/
-/*										*/
-/*  - Without limitation, TCG and its members and licensors disclaim all 	*/
-/*    liability, including liability for infringement of any proprietary 	*/
-/*    rights, relating to use of information in this specification and to the	*/
-/*    implementation of this specification, and TCG disclaims all liability for	*/
-/*    cost of procurement of substitute goods or services, lost profits, loss 	*/
-/*    of use, loss of data or any incidental, consequential, direct, indirect, 	*/
-/*    or special damages, whether under contract, tort, warranty or otherwise, 	*/
-/*    arising in any way out of use or reliance upon this specification or any 	*/
-/*    information herein.							*/
-/*										*/
-/*  (c) Copyright IBM Corp. and others, 2012 - 2019				*/
-/*										*/
-/********************************************************************************/
+/**
+ *  Socket Interface to a TPM Simulator
+ *  Written by Ken Goldman
+ *  IBM Thomas J. Watson Research Center
+ *  $Id: TcpServerPosix.c 1528 2019-11-20 20:31:43Z kgoldman $
+ *  (c) Copyright IBM Corp. and others, 2012 - 2019
+ */
 
 // D.3	TcpServer.c
 // D.3.1. Description
@@ -114,86 +61,57 @@ struct {
 // D.3.3.1.	CreateSocket()
 // This function creates a socket listening on PortNumber.
 
-static int
-CreateSocket(
-	     int                  PortNumber,
-	     SOCKET              *listenSocket,
-	     socklen_t           *addr_len,
-	     int                  domain 	// AF_INET or AF_INET6
-	     )
+static int CreateSocket(int PortNumber, SOCKET *listenSocket,
+    socklen_t *addr_len, int domain)
 {
-    struct		sockaddr_in MyAddress4;
-    struct		sockaddr_in6 MyAddress6;
-    int			opt;
-    
-    int res;
+    struct sockaddr_in MyAddress4;
+    int opt, res;
     
     // create listening socket
     *listenSocket = socket(domain, SOCK_STREAM, 0);
-    if(*listenSocket == -1)
-	{
-            printf("Warning: Cannot create server listen %s socket\nWarning is %d %s\n",
-                   domain == AF_INET6 ? "IPv6" :
-                   (domain == AF_INET) ? "IPv4" : "?", errno, strerror(errno));
-	    printf("Ignore the IPv6 warning if the platform doesn't support IPv6\n");
-	    return -1;
-	}
+    if (*listenSocket == -1) {
+        printf("Cannot create server listen socket: %s\n", strerror(errno));
+        return -1;
+    }
 
     opt = 1;
     /* Set SO_REUSEADDR before calling bind() for servers that bind to a fixed port number. */
     res = setsockopt(*listenSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     if (res != 0) {
-	printf("setsockopt error. Error is %d %s\n", errno, strerror(errno));
-	return -1;
+        printf("setsockopt error: %s\n", strerror(errno));
+        return -1;
     }
+
     // bind the listening socket to the specified port, any address (0s)
     switch (domain) {
-      case AF_INET:
-	memset((char *)&MyAddress4, 0, sizeof(MyAddress4));
-	MyAddress4.sin_family = domain;
-	MyAddress4.sin_port = htons((short) PortNumber);
-	*addr_len = sizeof(struct sockaddr_in);
-	res= bind(*listenSocket,(struct sockaddr*) &MyAddress4, *addr_len);
-	break;
-      case AF_INET6:
-	memset((char *)&MyAddress6, 0, sizeof(MyAddress6));
-	MyAddress6.sin6_family = domain;
-        MyAddress6.sin6_port = htons((short) PortNumber);
-	*addr_len = sizeof(struct sockaddr_in6);
-
-        opt = 1;
-        // Set IPPROTO_IPV6 so that it's just for IPv6 and not both IPv4/IPv6.
-        res = setsockopt(*listenSocket, IPPROTO_IPV6, IPV6_V6ONLY, &opt,
-			 sizeof(opt));
-        if (res != 0) {
-	    printf("setsockopt IPV6_V6ONLY error. Error is %d %s\n",
-		   errno, strerror(errno));
-	    return -1;
-        }
-	res= bind(*listenSocket,(struct sockaddr*) &MyAddress6, *addr_len);
-      break;
-      default:
+    case AF_INET:
+        memset((char *)&MyAddress4, 0, sizeof(MyAddress4));
+        MyAddress4.sin_family = domain;
+        MyAddress4.sin_port = htons((short) PortNumber);
+        *addr_len = sizeof(struct sockaddr_in);
+        res = bind(*listenSocket, (struct sockaddr *) &MyAddress4, *addr_len);
+        break;
+    default:
         printf("Address family %d not supported\n", domain);
         return -1;
     }
-    if(res != 0)
-	{
-            close(*listenSocket);
-	    *listenSocket = -1;
-	    printf("Bind error.  Error is  %d %s\n", errno, strerror(errno));
-	    return -1;
-	}
-    
+
+    if (res != 0) {
+        close(*listenSocket);
+        *listenSocket = -1;
+        printf("Bind error: %s\n", strerror(errno));
+        return -1;
+    }
+
     // listen/wait for server connections
-    res= listen(*listenSocket,3);
-    if(res != 0)
-	{
-	    close(*listenSocket);
-	    *listenSocket = -1;
-            printf("Listen error.  Error is %d %s\n", errno, strerror(errno));
-	    return -1;
-	}
-    
+    res = listen(*listenSocket, 5);
+    if (res != 0) {
+        close(*listenSocket);
+        *listenSocket = -1;
+        printf("Listen error: %s\n", strerror(errno));
+        return -1;
+    }
+
     return 0;
 }
 
@@ -216,6 +134,7 @@ PlatformServer(
 	    // connection.
 	    if(!ok) return TRUE;
 	    Command = ntohl(Command);
+	    printf("Received platform command %08x\n", Command);
 	    switch(Command)
 		{
 		  case TPM_SIGNAL_POWER_ON:
@@ -294,199 +213,100 @@ PlatformServer(
 // D.3.3.3.	PlatformSvcRoutine()
 // This function is called to set up the socket interfaces to listen for commands.
 
-int
-PlatformSvcRoutine(
-		   void *port
-		   )
+int PlatformSvcRoutine(void *port)
 {
-    int                  PortNumber = *(int *)port;
+    int PortNumber = *(int *)port;
+    SOCKET listenSocket, serverSocket;
+    socklen_t length;
+    BOOL continueServing = TRUE;
 
-    SOCKET               listenSocket[2], maxListenSocket, serverSocket;
-    struct               sockaddr_storage HerAddress;
-    fd_set               sockSet;
-    int                  res, i;
-    int                  nSock = 0;
-    socklen_t            length[2];
-    BOOL                 continueServing = TRUE;	/* kgold initialized */
-
-    if (CreateSocket(PortNumber, &listenSocket[nSock], &length[nSock],
-		     AF_INET) == 0) {
-        nSock++;
-
-    }
-    if (CreateSocket(PortNumber, &listenSocket[nSock], &length[nSock],
-		     AF_INET6) == 0) {
-        nSock++;
-    }
-    if (nSock == 0) {
-	printf("Create platform service socket fail\n");
-	return -1;
+    if (CreateSocket(PortNumber, &listenSocket, &length, AF_INET) != 0) {
+        printf("Create platform service socket fail\n");
+        return -1;
     }
 
-    maxListenSocket = listenSocket[0];
-    if ((nSock == 2) && (listenSocket[1] > maxListenSocket)) {
-        maxListenSocket = listenSocket[1];
-    }
-   
     // Loop accepting connections one-by-one until we are killed or asked to stop
     // Note the platform service is single-threaded so we don't listen for a new
     // connection until the prior connection drops.
     do {
         printf("Platform server listening on port %d\n", PortNumber);
 
-	// Select both IPv4 and IPv6 sockets or whatever is available
-	FD_ZERO(&sockSet);
-	FD_SET(listenSocket[0], &sockSet);
-	if (nSock == 2)
-	    FD_SET(listenSocket[1], &sockSet);
-	do {
-	    res = select(maxListenSocket + 1, &sockSet, NULL, NULL, NULL);
-	}
-	while ((res == -1) && (errno == EINTR));
-	if (res == -1) {
-	    printf("Platform server select error.  Error is %d %s\n",
-		   errno, strerror(errno));
-	    return -1;
-	}
+        do {
+            serverSocket = accept(listenSocket, NULL, NULL);
+        } while (serverSocket == -1 && errno == EINTR);
 
-	for (i = 0; i < nSock; i++) {
-	    int ipver = IPVER(length[i]);
+        if (serverSocket < 0) {
+            printf("Platform server Accept error: %s\n", strerror(errno));
+            return -1;
+        }
 
-	    if (!FD_ISSET(listenSocket[i], &sockSet))
-		{
-		    continue;
-		}
-	    // blocking accept
-	    serverSocket = accept(listenSocket[i],
-				  (struct sockaddr*) &HerAddress,
-				  &length[i]);
-	    if(serverSocket < 0)
-		{
-		    printf("Platform server IPv%d Accept error.  Error is %d %s\n",
-			   ipver, errno, strerror(errno));
-		    return -1;
-		};
-	    printf("Platform IPv%d client accepted\n", ipver);
+        printf("Platform client accepted\n");
 	    
-	    // normal behavior on client disconnection is to wait for a new
-	    // client to connect
-	    continueServing = PlatformServer(serverSocket);
-	    close(serverSocket);
-	    serverSocket = -1;
-	}
-    }
-    while(continueServing);
+        // normal behavior on client disconnection is to wait for a new
+        // client to connect
+        continueServing = PlatformServer(serverSocket);
+        close(serverSocket);
+    } while(continueServing);
     
     return 0;
 }
 
 // D.3.3.4.	PlatformSignalService()
 
-// This function starts a new thread waiting for platform signals. Platform signals are processed
-// one at a time in the order in which they are received.
+// This function starts a new thread waiting for platform signals.
+// Signals are processed one at a time in the order in which they are received.
 
-int
-PlatformSignalService(
-		      int              *PortNumberPlatform
-		      )
+int PlatformSignalService(int *PortNumberPlatform)
 {
-    unsigned long       thread;
-    int                 irc = 0;
-    pthread_t           *pthread = (pthread_t *)&thread;
+    pthread_t pthread;
 
-    irc = pthread_create(pthread,
-                         NULL,
-                         (void * (*)(void *))PlatformSvcRoutine,      /* thread entry function */
-                         (void *)PortNumberPlatform); 	          /* thread function parameters */
-    if (irc != 0) {
-	printf("Thread Creation failed\n");
-	return -1;
+    int rc = pthread_create(&pthread, NULL,
+        (void *(*)(void *))PlatformSvcRoutine, (void *)PortNumberPlatform);
+    if (rc != 0) {
+        printf("Thread Creation failed\n");
+        return -1;
     }
+
     return 0;
 }
 
 // D.3.3.5.	RegularCommandService()
 // This funciton services regular commands.
 
-int
-RegularCommandService(
-		      int              *PortNumber
-		      )
+int RegularCommandService(int *PortNumber)
 {
-    SOCKET               listenSocket[2], maxListenSocket;
-    SOCKET               serverSocket;
-    struct               sockaddr_storage HerAddress;
-    fd_set               sockSet;
-    int                  res, i;
-    int                  nSock = 0;
-    socklen_t            length[2];
-    BOOL 		continueServing = TRUE;	/* kgold - initialized */
+    SOCKET listenSocket, serverSocket;
+    socklen_t length;
+    BOOL continueServing = TRUE;
     
-    if (CreateSocket(*PortNumber, &listenSocket[nSock], &length[nSock],
-		     AF_INET) == 0) {
-        nSock++;
-
-    }
-    if (CreateSocket(*PortNumber, &listenSocket[nSock], &length[nSock],
-		     AF_INET6) == 0) {
-        nSock++;
-    }
-    if (nSock == 0) {
+    if (CreateSocket(*PortNumber, &listenSocket, &length, AF_INET) != 0) {
         printf("Create TPM command service socket fail\n");
         return -1;
     }
-    maxListenSocket = listenSocket[0];
-    if (nSock == 2 && listenSocket[1] > maxListenSocket) {
-        maxListenSocket = listenSocket[1];
-    }
-    
+
     // Loop accepting connections one-by-one until we are killed or asked to stop
     // Note the TPM command service is single-threaded so we don't listen for
     // a new connection until the prior connection drops.
-    do
-	{
-	    printf("TPM command server listening on port %d\n", *PortNumber);
+    do {
+        printf("TPM command server listening on port %d\n", *PortNumber);
 
-	    // Select both IPv4 and IPv6 sockets or whatever is available
-	    FD_ZERO(&sockSet);
-	    FD_SET(listenSocket[0], &sockSet);
-	    if (nSock == 2)
-		FD_SET(listenSocket[1], &sockSet);
-	    do {
-	        res = select(maxListenSocket + 1, &sockSet, NULL, NULL, NULL);
-	    } while ((res == -1) && (errno == EINTR));
-	    if (res == -1) {                                      
-	        printf("TPM command server select error.  Error is %d %s\n", errno,
-		       strerror(errno));                             
-	        return -1;                                        
-	    }                                                     
+        do {
+            serverSocket = accept(listenSocket, NULL, NULL);
+        } while (serverSocket == -1 && errno == EINTR);
 
-	    for (i = 0; i < nSock; i++) {
-	        int ipver = IPVER(length[i]);
+        if (serverSocket < 0) {
+            printf("TPM server Accept error: %s\n", strerror(errno));
+            return -1;
+        }
 
-	        if (!FD_ISSET(listenSocket[i], &sockSet))
-	            continue;
-	        // blocking accept
-		serverSocket = accept(listenSocket[i],
-				      (struct sockaddr*) &HerAddress,
-				      &length[i]);
-		if(serverSocket < 0)
-		    {
-			printf("TPM server IPv%d Accept error.  Error is %d %s\n",
-			       ipver, errno, strerror(errno));
-			return -1;
-		    };
-	        printf("Command IPv%d client accepted\n", ipver);
-	    
-	        // normal behavior on client disconnection is to wait for a new
-	        // client to connect
-	        continueServing = TpmServer(serverSocket);
-	        close(serverSocket);
-	        serverSocket = -1;
-	    }
-	}
-    while(continueServing);
+        printf("Command client accepted\n");
     
+        // normal behavior on client disconnection is to wait for a new
+        // client to connect
+        continueServing = TpmServer(serverSocket);
+        close(serverSocket);
+    } while(continueServing);
+
     return 0;
 }
 
@@ -568,42 +388,35 @@ ActTimeService(
 
 // D.3.3.6.	StartTcpServer()
 
-// Main entry-point to the TCP server.  The server listens on port specified. Note that there is no
-// way to specify the network interface in this implementation.
+// Main entry-point to the TCP server. The server listens on port specified.
 
-int
-StartTcpServer(
-	       int              *PortNumber,
-	       int              *PortNumberPlatform
-	       )
+int StartTcpServer(int *PortNumber, int *PortNumberPlatform)
 {
-    int                  res;
+    int res;
 
 #if RH_ACT_0 || 1
     // Start the Time Service routine
     res = ActTimeService();
-    if(res != 0)
-	{
-	    printf("TimeService failed\n");
-	    return res;
-	}
+    if (res != 0) {
+        printf("TimeService failed\n");
+        return res;
+    }
 #endif
+
     // Start Platform Signal Processing Service
     res = PlatformSignalService(PortNumberPlatform);
-    if (res != 0)
-	{
-	    printf("PlatformSignalService failed\n");
-	    return res;
-	}
-    
+    if (res != 0) {
+        printf("PlatformSignalService failed\n");
+        return res;
+    }
+
     // Start Regular/DRTM TPM command service
     res = RegularCommandService(PortNumber);
-    if (res != 0)
-	{
-	    printf("RegularCommandService failed\n");
-	    return res;
-	}
-    
+    if (res != 0) {
+        printf("RegularCommandService failed\n");
+        return res;
+    }
+
     return 0;
 }
 
@@ -769,6 +582,7 @@ TpmServer(
 	    if(!ok)
 		return TRUE;
 	    Command = ntohl(Command);
+	    printf("Received TPM command %08x\n", Command);
 	    switch(Command)
 		{
 		  case TPM_SIGNAL_HASH_START:
